@@ -19,6 +19,10 @@ VPC Network Peering allows you to make services available across VPC networks in
 
 In this tutorial, you create clusters in two VPC networks in one project, peer the networks, and expose a Kubernetes service using an Internal Load Balancer.  The following diagram shows the architecture:
 
+
+
+The peering steps are similar if the VPC networks are in separate projects or organizations.  This is highlighted in the tutorial.
+
 ## Objectives
 
 * Create VPC networks and subnets.
@@ -51,7 +55,7 @@ projected usage.
 
 ## Create VPC networks and subnets
 
-The Internal Load Balancer is a regional product so the subnets for each cluster need to be in the same region.  The subnet IPv4 address range cannot overlap for peering to work.
+The Internal Load Balancer is a regional product so the subnets for each cluster need to be in the same region.  The subnet IPv4 address ranges cannot overlap for peering to work.
 
 1. Create the VPC networks:
 
@@ -63,14 +67,42 @@ The Internal Load Balancer is a regional product so the subnets for each cluster
         gcloud compute networks subnets create subnet-a --network=network-a --range=192.168.0.0/16 --region=us-west1
         gcloud compute networks subnets create subnet-b --network=network-b --range=10.0.0.0/16 --region=us-west1
 
-
 ## Create Kubernetes Engine clusters
 
-1. Create the Kubernetes Engine cluster in network-a
+1. Create the Kubernetes Engine clusters in each VPC
 
+        gcloud container clusters create cluster-a --network network-a --subnetwork subnet-a --zone us-west1-a
+        gcloud container clusters create cluster-b --network network-b --subnetwork subnet-b --zone us-west1-b
 
+## Peer the VPC networks
 
-1. Create the Kubernetes Engine cluster in network-b
+Each network must establish a peering association.  The steps are not that different if the VPC networks are in separate projects or organizations.
+
+1. Peer network-a with network-b
+
+        gcloud compute networks peerings create peer-ab --network=network-a --peer-network=network-b --auto-create-routes
+
+    You should see in the output `state: INACTIVE` as the peering association from `network-b` is not created.
+
+    If the network is in another project or organization, you would execute:
+
+        gcloud compute networks peerings create peer-ab --network=network-a --peer-network=network-b --peer-project=[NETWORK-B-PROJECT-NAME]
+
+1. Peer network-b with network-a
+
+        gcloud compute networks peerings create peer-ba --network=network-b --peer-network=network-a --auto-create-routes
+
+    You should see in the output `state: ACTIVE` as the peering associations on both networks are established.
+
+    If the network is in another project or organization, you would execute:
+
+        gcloud compute networks peerings create peer-ba --network=network-b --peer-network=network-a --peer-project=[NETWORK-A-PROJECT-NAME]
+
+## Configure the firewall rules
+
+Google Kubernetes Engine automatically creates default firewall rules when you create the cluster.  These rules allow communication between the master and workers, between nodes in the cluster, and between pods in the cluster.  We need to add firewall rules to allow the cluster in `network-a` to access services in `network-b`.
+
+1.
 
 
 
