@@ -100,9 +100,44 @@ Each network must establish a peering association.  The steps are not that diffe
 
 ## Configure the firewall rules
 
-Google Kubernetes Engine automatically creates default firewall rules when you create the cluster.  These rules allow communication between the master and workers, between nodes in the cluster, and between pods in the cluster.  We need to add firewall rules to allow the cluster in `network-a` to access services in `network-b`.
+1. View the current firewall rules:
 
-1.
+        gcloud compute firewall-rules list --filter "network-a OR network-b"
+
+   You should see something similar in the output:
+
+        NAME                        NETWORK    DIRECTION  PRIORITY  ALLOW                         DENY
+        gke-cluster-a-xxxxxxxx-all  network-a  INGRESS    1000      tcp,udp,icmp,esp,ah,sctp
+        gke-cluster-a-xxxxxxxx-ssh  network-a  INGRESS    1000      tcp:22
+        gke-cluster-a-xxxxxxxx-vms  network-a  INGRESS    1000      icmp,tcp:1-65535,udp:1-65535
+        gke-cluster-b-xxxxxxxx-all  network-b  INGRESS    1000      ah,sctp,tcp,udp,icmp,esp
+        gke-cluster-b-xxxxxxxx-ssh  network-b  INGRESS    1000      tcp:22
+        gke-cluster-b-xxxxxxxx-vms  network-b  INGRESS    1000      icmp,tcp:1-65535,udp:1-65535
+
+  Google Kubernetes Engine automatically creates default firewall rules when you create the cluster.  The `ssh` rule allows communication between the master and workers.  The `all` rule allows communication between pods in the cluster.  The `vms` rule allows communication between the nodes in the cluster.
+
+1. Create a firewall rule to allow `network-a` to access internal services over port 80 on `network-b`:
+
+        gcloud compute firewall-rules create fw-ab --allow=TCP:80 --source-ranges 192.168.0.0/16  --network network-b
+
+## Deploy Kubernetes internal services
+
+1. Set the zone of `cluster-b`:
+
+        gcloud config set compute/zone us-west1-b
+
+1. Get authentication credentials to `cluster-b`:
+
+        gcloud container clusters get-credentials cluster-b
+
+1. Create the deployment:
+
+        kubectl run hello-server --image gcr.io/google-samples/hello-app:1.0 --port 8080
+
+1. Expose the service using the Internal Load Balancer:
+
+
+
 
 
 
